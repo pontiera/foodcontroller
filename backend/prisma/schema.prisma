@@ -1,0 +1,430 @@
+// Food Controller - Production Prisma Schema
+// Multi-tenant restaurant management SaaS
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// MULTI-TENANT CORE
+// ============================================================
+
+model Organization {
+  id                String   @id @default(cuid())
+  name              String
+  slug              String   @unique
+  type              String?  // "restaurant", "cafe", "bar", etc.
+  taxId             String?
+  address           String?
+  phone             String?
+  mobile            String?
+  fax               String?
+  email             String?
+  website           String?
+  logoUrl           String?
+  isHeadOffice      Boolean  @default(true)
+  branchCode        String?
+  operationStartDate DateTime?
+  language          String   @default("en")
+  timezone          String   @default("Asia/Bangkok")
+  currency          String   @default("THB")
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  users             UserOrganization[]
+  suppliers         Supplier[]
+  ingredients       Ingredient[]
+  recipes           Recipe[]
+  masterRecipes     MasterRecipe[]
+  assets            Asset[]
+  sopDocuments      SopDocument[]
+  financialRecords  FinancialRecord[]
+  documentSettings  DocumentSetting?
+
+  @@index([slug])
+}
+
+// ============================================================
+// USERS & AUTH
+// ============================================================
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  passwordHash  String
+  firstName     String
+  lastName      String
+  phone         String?
+  avatarUrl     String?
+  isActive      Boolean  @default(true)
+  emailVerified Boolean  @default(false)
+  refreshToken  String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  organizations UserOrganization[]
+
+  @@index([email])
+}
+
+model UserOrganization {
+  id             String       @id @default(cuid())
+  userId         String
+  organizationId String
+  role           Role         @default(STAFF)
+  position       String?
+  isActive       Boolean      @default(true)
+  invitedAt      DateTime     @default(now())
+  joinedAt       DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+  @@index([userId])
+  @@index([organizationId])
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  MANAGER
+  STAFF
+}
+
+// ============================================================
+// SUPPLIERS
+// ============================================================
+
+model Supplier {
+  id             String   @id @default(cuid())
+  organizationId String
+  code           String
+  name           String
+  taxId          String?
+  address        String?
+  isHeadOffice   Boolean  @default(true)
+  branchCode     String?
+  creditDays     Int      @default(30)
+  contactName    String?
+  mobile         String?
+  officePhone    String?
+  email          String?
+  bankName       String?
+  bankAccount    String?
+  bankBranch     String?
+  bankAccountType String?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  ingredients    Ingredient[]
+  assets         Asset[]
+  promotions     SupplierPromotion[]
+
+  @@unique([organizationId, code])
+  @@index([organizationId])
+}
+
+model SupplierPromotion {
+  id          String   @id @default(cuid())
+  supplierId  String
+  title       String
+  description String?
+  imageUrl    String?
+  startDate   DateTime?
+  endDate     DateTime?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  supplier    Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  @@index([supplierId])
+}
+
+// ============================================================
+// INGREDIENTS
+// ============================================================
+
+model Ingredient {
+  id                   String   @id @default(cuid())
+  organizationId       String
+  supplierId           String?
+  code                 String
+  name                 String
+  brand                String?
+  foodCategory         String?
+  // Purchasing unit
+  purchaseWeight       Float    // weight per purchase unit (e.g. 1000g per bag)
+  purchaseUnit         String   // "bag", "kg", "box", etc.
+  purchasePrice        Float    // price per purchase unit
+  // Calculated fields
+  pricePerKg           Float    // purchasePrice / (purchaseWeight/1000)
+  lossPercentage       Float    @default(0) // waste/trim %
+  actualCostPerGram    Float    // (pricePerKg * (1 + lossPercentage/100)) / 1000
+  actualCostPerKg      Float    // actualCostPerGram * 1000
+  // Nutrition (optional, for calorie tracking)
+  caloriesPer100g      Float?
+  proteinPer100g       Float?
+  fatPer100g           Float?
+  carbsPer100g         Float?
+  sodiumPer100g        Float?
+  fiberPer100g         Float?
+  isActive             Boolean  @default(true)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  organization         Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  supplier             Supplier?           @relation(fields: [supplierId], references: [id])
+  recipeIngredients    RecipeIngredient[]
+  masterRecipeIngredients MasterRecipeIngredient[]
+
+  @@unique([organizationId, code])
+  @@index([organizationId])
+  @@index([supplierId])
+}
+
+// ============================================================
+// MASTER RECIPES (Prep Recipes / Base Recipes)
+// ============================================================
+
+model MasterRecipe {
+  id              String   @id @default(cuid())
+  organizationId  String
+  code            String
+  name            String
+  description     String?
+  category        String?
+  yield           Float    // output weight in grams
+  yieldUnit       String   @default("g")
+  totalCost       Float    @default(0) // auto-calculated
+  costPerGram     Float    @default(0) // auto-calculated
+  instructions    String?
+  imageUrl        String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  organization    Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  ingredients     MasterRecipeIngredient[]
+  recipeUsages    RecipeIngredient[]     // used in main recipes
+
+  @@unique([organizationId, code])
+  @@index([organizationId])
+}
+
+model MasterRecipeIngredient {
+  id             String       @id @default(cuid())
+  masterRecipeId String
+  ingredientId   String?
+  quantity       Float        // in grams
+  unit           String       @default("g")
+  cost           Float        @default(0) // auto-calculated
+  notes          String?
+  sortOrder      Int          @default(0)
+
+  masterRecipe   MasterRecipe @relation(fields: [masterRecipeId], references: [id], onDelete: Cascade)
+  ingredient     Ingredient?  @relation(fields: [ingredientId], references: [id])
+
+  @@index([masterRecipeId])
+}
+
+// ============================================================
+// RECIPES (Menu Items)
+// ============================================================
+
+model Recipe {
+  id                String   @id @default(cuid())
+  organizationId    String
+  code              String
+  name              String
+  description       String?
+  category          String?  // "Appetizer", "Main", "Salad", "Soup", "Dessert", "Drink"
+  servingSize       Float    @default(1)
+  servingUnit       String   @default("portion")
+  sellingPrice      Float    @default(0)
+  // Cost fields (auto-calculated)
+  totalIngredientCost Float  @default(0)
+  laborCostPercent  Float    @default(0)
+  overheadPercent   Float    @default(0)
+  totalCost         Float    @default(0)
+  grossProfit       Float    @default(0)
+  grossProfitMargin Float    @default(0) // percentage
+  foodCostPercent   Float    @default(0)
+  // Nutrition (auto-calculated from ingredients)
+  totalCalories     Float?
+  totalProtein      Float?
+  totalFat          Float?
+  totalCarbs        Float?
+  instructions      String?
+  imageUrl          String?
+  sopDocumentId     String?
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  organization      Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  ingredients       RecipeIngredient[]
+  sopDocument       SopDocument?       @relation(fields: [sopDocumentId], references: [id])
+
+  @@unique([organizationId, code])
+  @@index([organizationId])
+  @@index([category])
+}
+
+model RecipeIngredient {
+  id              String       @id @default(cuid())
+  recipeId        String
+  // Either a raw ingredient OR a master recipe
+  ingredientId    String?
+  masterRecipeId  String?
+  quantity        Float        // in grams
+  unit            String       @default("g")
+  cost            Float        @default(0) // auto-calculated
+  notes           String?
+  sortOrder       Int          @default(0)
+
+  recipe          Recipe       @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  ingredient      Ingredient?  @relation(fields: [ingredientId], references: [id])
+  masterRecipe    MasterRecipe? @relation(fields: [masterRecipeId], references: [id])
+
+  @@index([recipeId])
+  @@index([ingredientId])
+}
+
+// ============================================================
+// ASSETS / EQUIPMENT
+// ============================================================
+
+model Asset {
+  id              String   @id @default(cuid())
+  organizationId  String
+  supplierId      String?
+  code            String
+  name            String
+  brand           String?
+  skuCode         String?
+  department      String?  // "Kitchen", "Service", "Bar", "Management"
+  imageUrl        String?
+  quantity        Int      @default(1)
+  unit            String   @default("unit")
+  pricePerUnit    Float    @default(0)
+  totalValue      Float    @default(0) // auto-calculated
+  purchaseDate    DateTime?
+  warrantyExpiry  DateTime?
+  condition       AssetCondition @default(GOOD)
+  notes           String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  supplier        Supplier?    @relation(fields: [supplierId], references: [id])
+
+  @@unique([organizationId, code])
+  @@index([organizationId])
+  @@index([department])
+}
+
+enum AssetCondition {
+  EXCELLENT
+  GOOD
+  FAIR
+  POOR
+  RETIRED
+}
+
+// ============================================================
+// SOP DOCUMENTS
+// ============================================================
+
+model SopDocument {
+  id              String   @id @default(cuid())
+  organizationId  String
+  code            String
+  title           String
+  category        String?
+  content         String   // Rich text / markdown
+  version         String   @default("1.0")
+  imageUrls       String[] // Array of image URLs
+  videoUrl        String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  recipes         Recipe[]
+
+  @@unique([organizationId, code])
+  @@index([organizationId])
+}
+
+// ============================================================
+// FINANCIAL RECORDS (P&L)
+// ============================================================
+
+model FinancialRecord {
+  id              String          @id @default(cuid())
+  organizationId  String
+  month           Int             // 1-12
+  year            Int
+  // Revenue
+  revenue         Float           @default(0)
+  otherIncome     Float           @default(0)
+  // COGS
+  foodCost        Float           @default(0)
+  beverageCost    Float           @default(0)
+  // Operating Expenses
+  laborCost       Float           @default(0)
+  rent            Float           @default(0)
+  utilities       Float           @default(0)
+  marketing       Float           @default(0)
+  maintenance     Float           @default(0)
+  depreciation    Float           @default(0)
+  otherExpenses   Float           @default(0)
+  // Calculated
+  grossProfit     Float           @default(0)
+  operatingProfit Float           @default(0)
+  netProfit       Float           @default(0)
+  grossMargin     Float           @default(0)
+  netMargin       Float           @default(0)
+  notes           String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  organization    Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, month, year])
+  @@index([organizationId])
+  @@index([year, month])
+}
+
+// ============================================================
+// DOCUMENT SETTINGS
+// ============================================================
+
+model DocumentSetting {
+  id              String   @id @default(cuid())
+  organizationId  String   @unique
+  documentPrefix  String   @default("FC")
+  headerText      String?
+  footerText      String?
+  designTheme     String   @default("classic")
+  showLogo        Boolean  @default(true)
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+}
