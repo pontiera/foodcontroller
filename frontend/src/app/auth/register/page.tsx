@@ -5,6 +5,19 @@ import { useAuthStore } from '@/store/auth.store';
 import { authApi } from '@/lib/api';
 import { UtensilsCrossed } from 'lucide-react';
 
+function Field({ label, name, type = 'text', placeholder = '', value, onChange, required = true }: {
+  label: string; name: string; type?: string; placeholder?: string;
+  value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; required?: boolean;
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="text-xs font-semibold text-slate-600">{label}</label>
+      <input name={name} type={type} required={required} value={value} onChange={onChange} placeholder={placeholder}
+        className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-colors" />
+    </div>
+  );
+}
+
 export default function RegisterPage() {
   const router = useRouter();
   const { setAuth } = useAuthStore();
@@ -30,15 +43,9 @@ export default function RegisterPage() {
     }
   };
 
-  const f = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, [k]: e.target.value });
-
-  const Field = ({ label, k, type = 'text', placeholder = '' }: any) => (
-    <div className="flex flex-col gap-1">
-      <label className="text-xs font-semibold text-slate-600">{label}</label>
-      <input type={type} required={k !== 'phone'} value={(form as any)[k]} onChange={f(k)} placeholder={placeholder}
-        className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-colors" />
-    </div>
-  );
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-orange-900 flex items-center justify-center p-4">
@@ -63,19 +70,19 @@ export default function RegisterPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="p-3 bg-orange-50 rounded-xl border border-orange-200 mb-2">
               <p className="text-xs font-bold text-orange-700 mb-2">🏪 Restaurant</p>
-              <Field label="Restaurant Name *" k="organizationName" placeholder="The Golden Wok" />
+              <Field label="Restaurant Name *" name="organizationName" placeholder="The Golden Wok" value={form.organizationName} onChange={handleChange} />
             </div>
 
             <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
               <p className="text-xs font-bold text-slate-700 mb-3">👤 Owner Account</p>
               <div className="grid grid-cols-2 gap-3">
-                <Field label="First Name *" k="firstName" placeholder="Somchai" />
-                <Field label="Last Name *" k="lastName" placeholder="Jaidee" />
+                <Field label="First Name *" name="firstName" placeholder="Somchai" value={form.firstName} onChange={handleChange} />
+                <Field label="Last Name *" name="lastName" placeholder="Jaidee" value={form.lastName} onChange={handleChange} />
               </div>
               <div className="mt-3 space-y-3">
-                <Field label="Email *" k="email" type="email" placeholder="owner@restaurant.com" />
-                <Field label="Password *" k="password" type="password" placeholder="Min. 8 characters" />
-                <Field label="Phone" k="phone" placeholder="081-234-5678" />
+                <Field label="Email *" name="email" type="email" placeholder="owner@restaurant.com" value={form.email} onChange={handleChange} />
+                <Field label="Password *" name="password" type="password" placeholder="Min. 8 characters" value={form.password} onChange={handleChange} />
+                <Field label="Phone" name="phone" placeholder="081-234-5678" value={form.phone} onChange={handleChange} required={false} />
               </div>
             </div>
 
