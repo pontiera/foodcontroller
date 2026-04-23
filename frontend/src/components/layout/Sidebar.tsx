@@ -12,17 +12,16 @@ import { useRouter } from 'next/navigation';
 import { clsx } from 'clsx';
 
 const NAV_ITEMS = [
-  { href: '/dashboard',    label: 'Dashboard',    icon: LayoutDashboard },
-  { href: '/financials',   label: 'P & L',        icon: TrendingUp },
-  { href: '/suppliers',    label: 'Suppliers',     icon: ShoppingCart },
-  { href: '/ingredients',  label: 'Ingredients',  icon: ChefHat },
-  { href: '/recipes',      label: 'Recipes',       icon: UtensilsCrossed },
+  { href: '/dashboard',      label: 'Dashboard',      icon: LayoutDashboard },
+  { href: '/financials',     label: 'P & L',          icon: TrendingUp },
+  { href: '/suppliers',      label: 'Suppliers',       icon: ShoppingCart },
+  { href: '/ingredients',    label: 'Ingredients',    icon: ChefHat },
+  { href: '/recipes',        label: 'Recipes',         icon: UtensilsCrossed },
   { href: '/master-recipes', label: 'Master Recipes', icon: BookOpen },
-  { href: '/sop',          label: 'S.O.P.',        icon: FileText },
-  { href: '/analytics',    label: 'Menu Analytics', icon: BarChart3 },
-  { href: '/assets',       label: 'Assets',        icon: Wrench },
-  { href: '/users',        label: 'Team',          icon: Users },
-  { href: '/settings',     label: 'Settings',      icon: Settings },
+  { href: '/sop',            label: 'S.O.P.',          icon: FileText },
+  { href: '/analytics',      label: 'Menu Analytics', icon: BarChart3 },
+  { href: '/assets',         label: 'Assets',          icon: Wrench },
+  { href: '/settings',       label: 'Settings',        icon: Settings },
 ];
 
 export function Sidebar() {
@@ -59,7 +58,6 @@ export function Sidebar() {
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
-      {/* Logo */}
       <div className={clsx('flex items-center gap-3 px-4 py-5 border-b border-slate-200', collapsed && 'justify-center px-2')}>
         <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center shrink-0">
           <UtensilsCrossed size={16} className="text-white" />
@@ -72,12 +70,10 @@ export function Sidebar() {
         )}
       </div>
 
-      {/* Nav */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         {NAV_ITEMS.map((item) => <NavItem key={item.href} item={item} />)}
       </nav>
 
-      {/* User */}
       <div className="border-t border-slate-200 p-3">
         <div className={clsx('flex items-center gap-3 px-2 py-2 rounded-lg', !collapsed && 'mb-1')}>
           <div className="w-7 h-7 bg-orange-100 rounded-full flex items-center justify-center text-orange-700 text-xs font-bold shrink-0">
@@ -106,7 +102,6 @@ export function Sidebar() {
 
   return (
     <>
-      {/* Mobile toggle */}
       <button
         onClick={() => setMobileOpen(true)}
         className="fixed top-4 left-4 z-50 md:hidden bg-white border border-slate-200 rounded-lg p-2 shadow-sm"
@@ -114,7 +109,6 @@ export function Sidebar() {
         <Menu size={20} />
       </button>
 
-      {/* Mobile overlay */}
       {mobileOpen && (
         <div className="fixed inset-0 z-40 md:hidden">
           <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
@@ -127,7 +121,6 @@ export function Sidebar() {
         </div>
       )}
 
-      {/* Desktop sidebar */}
       <div
         className={clsx(
           'hidden md:flex flex-col h-screen bg-white border-r border-slate-200 transition-all duration-300 shrink-0',
@@ -135,7 +128,6 @@ export function Sidebar() {
         )}
       >
         <SidebarContent />
-        {/* Collapse toggle */}
         <button
           onClick={() => setCollapsed(!collapsed)}
           className="absolute bottom-20 -right-3 bg-white border border-slate-200 rounded-full p-1 shadow-sm text-slate-500 hover:text-slate-800 transition-colors"
